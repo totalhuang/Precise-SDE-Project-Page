@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+    content="Precise: SDE-consistent stochastic sampling for RL post-training of flow-matching models — logSNR exploration schedule and frozen posterior-mean discretization.">
+  <meta property="og:title" content="Precise: SDE-Consistent Stochastic Sampling for RL Post-Training of Flow-Matching Models" />
+  <meta property="og:description"
+    content="Principled exploration schedule + SDE-consistent finite-step transitions for flow-matching GRPO. State-of-the-art alignment with less wall-clock time." />
+  <meta property="og:url" content="https://totalhuang.github.io/Precise-SDE-Project-Page/" />
+  <meta property="og:image" content="static/images/precise_banner_og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <meta name="twitter:title" content="Precise — SDE-consistent sampling for flow RL" />
+  <meta name="twitter:description"
+    content="LogSNR exploration + frozen clean-latent posterior mean updates for flow-matching GRPO." />
+  <meta name="twitter:image" content="static/images/precise_banner_og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="keywords"
+    content="flow matching, GRPO, reinforcement learning, stochastic differential equation, diffusion, Precise, post-training">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Precise: SDE-Consistent Stochastic Sampling for RL Post-Training of Flow-Matching Models</title>
+  <link rel="icon" type="image/x-icon" href="static/images/icon.ico">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}], throwOnError: false});"></script>
+</head>
+
+<body>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Precise: SDE-Consistent Stochastic Sampling for RL Post-Training of
+              Flow-Matching Models</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Jade Zou<sup>1,2,*,‡</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?hl=en&user=TaM4e4wAAAAJ"
+                  target="_blank" rel="noopener noreferrer">Tao Huang</a><sup>2,*,‡</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=gsOklKAAAAAJ&hl=zh-CN"
+                  target="_blank" rel="noopener noreferrer">Weijie Kong</a><sup>2,*</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=lQsMoJsAAAAJ&hl=en&oi=ao"
+                  target="_blank" rel="noopener noreferrer">Junzhe Li</a><sup>1,2</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?hl=zh-TW&user=1xTR6qoAAAAJ"
+                  target="_blank" rel="noopener noreferrer">Yue Wu</a><sup>2</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?hl=zh-TW&user=Ypu45nIAAAAJ"
+                  target="_blank" rel="noopener noreferrer">Qi Tian</a><sup>2</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=lHbXg_0AAAAJ&hl=zh-TW"
+                  target="_blank" rel="noopener noreferrer">Jiangfeng Xiong</a><sup>2</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?hl=zh-TW&user=nF_klRIAAAAJ"
+                  target="_blank" rel="noopener noreferrer">Jianwei Zhang</a><sup>2,†</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=FJwtMf0AAAAJ&hl=en"
+                  target="_blank" rel="noopener noreferrer">Liefeng Bo</a><sup>2</sup>,</span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=igtXP_kAAAAJ&hl=en"
+                  target="_blank" rel="noopener noreferrer">Zhao Zhong</a><sup>2,§</sup></span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block"><sup>1</sup>Peking University</span>
+              <span class="author-block"><sup>2</sup>Tencent Hunyuan</span>
+            </div>
+
+            <div class="is-size-6 publication-authors has-text-grey">
+              <span class="author-block"><sup>*</sup>Equal contribution</span>
+              <span class="author-block"><sup>‡</sup>Work done during internship at Tencent Hunyuan</span>
+              <span class="author-block"><sup>†</sup>Project leader</span>
+              <span class="author-block"><sup>§</sup>Corresponding author</span>
+            </div>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <!--
+                <span class="link-block">
+                  <a href="#" target="_blank" rel="noopener noreferrer"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                    <span>Paper</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="#" target="_blank" rel="noopener noreferrer"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="ai ai-arxiv"></i></span>
+                    <span>arXiv</span>
+                  </a>
+                </span>
+                -->
+                <span class="link-block">
+                  <a href="https://github.com/Tencent-Hunyuan/Precise" target="_blank" rel="noopener noreferrer"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fab fa-github"></i></span>
+                    <span>Code</span>
+                  </a>
+                </span>
+                <!--
+                <span class="link-block">
+                  <a href="#BibTeX" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fas fa-quote-right"></i></span>
+                    <span>BibTeX</span>
+                  </a>
+                </span>
+                -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="precise-nav" aria-label="Section navigation">
+    <div class="container is-max-desktop">
+      <ul>
+        <li><a href="#abstract">Abstract</a></li>
+        <li><a href="#motivation">Motivation</a></li>
+        <li><a href="#method">Method</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#flux">FLUX.2</a></li>
+        <li><a href="#ablations">Ablations</a></li>
+        <li><a href="#qualitative">Qualitative</a></li>
+        <!--
+        <li><a href="#BibTeX">BibTeX</a></li>
+        -->
+      </ul>
+    </div>
+  </nav>
+
+  <section class="section teaser-overview">
+    <div class="container is-max-widescreen">
+      <figure class="teaser-figure">
+        <img src="static/images/precise_teaser.png" alt="Overview of Precise sampler design and faster reward optimization"
+          loading="eager" />
+      </figure>
+    </div>
+  </section>
+
+  <section class="section tldr-section">
+    <div class="container is-max-desktop">
+      <div class="tldr-grid">
+        <div class="tldr-card">
+          <div class="tldr-figure">13.1&ndash;53.2%</div>
+          <div class="tldr-label">less wall-clock time<br>to match best prior sampler</div>
+        </div>
+        <div class="tldr-card">
+          <div class="tldr-figure">SOTA</div>
+          <div class="tldr-label">PickScore &amp; HPSv2.1<br>on SD3.5-M and FLUX.2 Klein</div>
+        </div>
+        <div class="tldr-card">
+          <div class="tldr-figure">6&ndash;30 NFE</div>
+          <div class="tldr-label">SDE-consistent few-step sampler<br>robust across NFE and exploration strength</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="abstract" class="section hero is-light">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              Reinforcement learning (RL) has become an effective way to improve prompt alignment and perceptual
+              quality in diffusion and flow-matching generators. A critical step for applying online RL to flow matching
+              is turning the deterministic sampling trajectory into a stochastic policy, typically by replacing the
+              reverse-time Ordinary Differential Equation (ODE) with a Stochastic Differential Equation (SDE). The
+              stochastic sampler, controlling the exploration behavior and denoising dynamics, is thus part of the
+              policy, and its design can significantly affect the reward optimization performance. We break down the
+              sampler design into two interdependent components: choosing the right amount of stochastic exploration,
+              and discretizing the resulting SDE faithfully at the small step counts used in RL. To address the first
+              component, we analyze the inherent tension between exploration and stability in denoising and derive an SDE
+              schedule that balances the two. Turning to the discretization challenge, we use a toy example to show that
+              existing samplers can deviate from the flow-matching process, either by introducing excessive
+              discretization noise or by relying on heuristic rules that do not guarantee convergence to the data
+              distribution. To address these issues, we propose <strong>Precise</strong>, a new stochastic sampler that
+              balances effective exploration with stability. Crucially, Precise keeps the denoising trajectory
+              SDE-consistent through a novel approximation that freezes the clean-latent posterior mean, resolving the
+              excess noise issue in standard samplers.
+            </p>
+            <p>
+              Extensive experiments demonstrate that this formulation leads to significantly faster and more stable
+              reward optimization via reinforcement learning, achieving state-of-the-art alignment scores (e.g.,
+              PickScore, HPSv2.1) while requiring 13.1–53.2% less wall-clock training time to match the best in-domain
+              performance of prior samplers.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="motivation" class="hero is-small">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">Motivation and design space</h2>
+        <p class="subtitle is-6 has-text-centered has-text-grey mb-5">Introduction &amp; analysis (figures)</p>
+        <div id="carousel-motivation" class="carousel results-carousel">
+          <div class="item">
+            <img src="static/images/precise_fig_sampler_coordinates.png" alt="Sampler design coordinates"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>Sampler design has two coupled axes.</strong>
+              <em>Vertical:</em> exploration&ndash;stability balance, set by the noise schedule $\varepsilon_t$.
+              <em>Horizontal:</em> SDE consistency, set by the finite-step transition rule.
+              Dance-GRPO is too conservative early and too aggressive late; Flow-GRPO injects excess discretization
+              noise at small NFE; CPS preserves coefficients but collapses residual posterior uncertainty.
+              <span style="font-variant: small-caps;">Precise</span> improves both axes simultaneously.
+            </p>
+          </div>
+          <div class="item">
+            <img src="static/images/precise_fig_double_ring.png" alt="Double ring toy illustration"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>Double-ring point-mass toy.</strong>
+              Flow-GRPO's Euler step inflates the outer ring as $\varepsilon$ grows (excess discretization noise);
+              CPS preserves nominal coefficients but contracts variance and biases the marginal toward the posterior
+              mean. <span style="font-variant: small-caps;">Precise</span> recovers the target marginal across all
+              tested $\varepsilon$.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="method" class="section hero is-light">
+    <div class="container is-max-desktop method-section">
+      <h2 class="title is-3 has-text-centered">Method</h2>
+      <p class="subtitle is-6 has-text-centered has-text-grey mb-5">
+        A logSNR-balanced exploration schedule + an SDE-consistent closed-form transition,
+        coupled through a <em>frozen clean-latent posterior mean</em> approximation.
+      </p>
+
+      <!-- 3.1 Setup -->
+      <h3 class="title is-4 method-subtitle">1. Setup: flow-matching path and reverse SDE</h3>
+      <div class="content has-text-justified">
+        <p>
+          We use the linear flow-matching interpolation
+          $\mathbf{z}_t=\alpha_t\mathbf{z}_0+\sigma_t\boldsymbol{\epsilon}$ with
+          $\alpha_t=1-t$, $\sigma_t=t$, and $\boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I})$.
+          A flow-matching network predicts the target velocity $\mathbf{u}_t=\boldsymbol{\epsilon}-\mathbf{z}_0$
+          from $(\mathbf{z}_t,t)$:
+        </p>
+        <p>
+          \[
+            \mathbf{z}_t \;=\; (1-t)\,\mathbf{z}_0 + t\,\boldsymbol{\epsilon}.
+          \]
+        </p>
+        <p>
+          To enable on-policy RL, Flow-GRPO and Dance-GRPO replace the deterministic ODE with the
+          reverse-time SDE
+        </p>
+        <p>
+          \[
+            \mathrm{d}\mathbf{z}_t
+            \;=\;
+            \Bigl(
+              \mathbf{u}_t
+              \;-\;
+              \tfrac{1}{2}\,\varepsilon_t^{2}\,\nabla_{\mathbf{z}}\log p_t(\mathbf{z}_t)
+            \Bigr)\mathrm{d}t
+            \;+\; \varepsilon_t\,\mathrm{d}\mathbf{w}_t,
+          \]
+        </p>
+        <p>
+          where $\varepsilon_t \ge 0$ is the <em>exploration schedule</em> and $\mathbf{w}_t$ is Brownian motion.
+          Defining the clean-latent posterior mean
+          $\hat{\mathbf{z}}_0(t)\triangleq\mathbb{E}[\mathbf{z}_0\mid\mathbf{z}_t]$,
+          the noise and score directions admit closed forms
+        </p>
+        <p>
+          \[
+            \hat{\boldsymbol{\epsilon}}(t)
+            \;=\;
+            \frac{\mathbf{z}_t-(1-t)\hat{\mathbf{z}}_0(t)}{t},
+            \qquad
+            \nabla_{\mathbf{z}}\log p_t(\mathbf{z}_t)
+            \;=\;
+            \frac{(1-t)\hat{\mathbf{z}}_0(t)-\mathbf{z}_t}{t^{2}}.
+          \]
+        </p>
+        <p>
+          Two coupled choices then define the on-policy sampler: the schedule $\varepsilon_t$,
+          and the finite-step rule that discretizes the reverse SDE at the small NFE budget used in RL.
+        </p>
+      </div>
+
+      <!-- 3.2 Schedule -->
+      <h3 class="title is-4 method-subtitle">2. Exploration schedule: constant score-to-velocity progress ratio</h3>
+      <div class="content has-text-justified">
+        <p>
+          We measure denoising progress with the log signal-to-noise ratio
+          $\lambda_t=\log\bigl((1-t)^{2}/t^{2}\bigr)$.
+          A first-order expansion of an infinitesimal reverse step shows that the velocity term contributes
+          $\Delta\lambda_{\mathrm{vel}}=2\Delta t/(t(1-t))$ to the logSNR, while the score and stochastic
+          terms cancel each other at first order with magnitudes $\pm\,\varepsilon_t^{2}\Delta t/t^{2}$.
+          The net first-order progress is therefore independent of $\varepsilon_t$,
+          but the score-induced "extra denoising work" asked of the model scales like $\varepsilon_t^{2}/t^{2}$.
+          We pin this work to be a constant fraction of the velocity progress,
+          $R(t)\triangleq\Delta\lambda_{\mathrm{sco}}/\Delta\lambda_{\mathrm{vel}}=\mathrm{const}$, giving
+        </p>
+        <p>
+          \[
+            \boxed{\;\varepsilon_t \;=\; \eta\sqrt{\dfrac{t}{1-t}},\qquad R(t)\;=\;\dfrac{\eta^{2}}{2}.\;}
+          \]
+        </p>
+        <p>
+          The scalar $\eta>0$ thus directly controls the score-to-velocity progress ratio.
+          In practice values around $\eta\!\approx\!\sqrt{2}$ make the score-induced progress comparable to
+          the velocity progress and work well across backbones and rewards.
+        </p>
+      </div>
+
+      <!-- 3.3 Failure modes -->
+      <h3 class="title is-4 method-subtitle">3. Failure modes of prior samplers</h3>
+      <div class="content has-text-justified">
+        <p>
+          <strong>Euler&ndash;Maruyama injects excess discretization noise.</strong>
+          The standard Euler step used by Flow-GRPO and Dance-GRPO freezes the velocity and score at
+          time $t$, ignoring the feedback of the freshly injected noise on $\mathbf{u}_t$ and
+          $\nabla\log p_t$. On the toy point-mass data law $\mathbf{z}_\star$, plugging the corresponding
+          $(\mathbf{u}_t,\nabla\log p_t)$ into the Euler step yields
+        </p>
+        <p>
+          \[
+            \mathbf{z}_{t'}^{\mathrm{Euler}}
+            \;=\;
+            (1-t')\mathbf{z}_\star
+            +\Bigl(t' - \tfrac{\varepsilon_t^{2}\Delta t}{2t}\Bigr)\boldsymbol{\epsilon}
+            +\varepsilon_t\sqrt{\Delta t}\,\mathbf{w}.
+          \]
+        </p>
+        <p>
+          Because $\mathbf{w}\!\perp\!\boldsymbol{\epsilon}$, the effective noise coefficient becomes
+          $\sqrt{(t'-\varepsilon_t^{2}\Delta t/(2t))^{2}+\varepsilon_t^{2}\Delta t}>t'$
+          whenever $\varepsilon_t>0$&mdash; the sampler adds excess noise even with a perfect model.
+        </p>
+        <p>
+          <strong>CPS preserves coefficients but contracts the marginal.</strong>
+          Coefficient-preserving samplers use posterior-mean updates of the form
+          $\mathbf{z}_{t'}^{\mathrm{CPS}}=(1-t')\hat{\mathbf{z}}_0(t)+k_1\hat{\boldsymbol{\epsilon}}(t)+k_2\mathbf{w}$
+          with $k_1^{2}+k_2^{2}={t'}^{2}$. They are exact under point-mass data, but for
+          non-degenerate distributions the posterior mean discards residual uncertainty in
+          $\mathbf{z}_0\mid\mathbf{z}_t$, so the covariance contracts by exactly
+        </p>
+        <p>
+          \[
+            \mathrm{Cov}_{\text{target}}-\mathrm{Cov}_{\text{CPS}}
+            \;=\;
+            (1-t')^{2}\,\mathbb{E}_{\mathbf{z}_t}\!\bigl[\mathrm{Cov}(\mathbf{z}_0\mid\mathbf{z}_t)\bigr],
+          \]
+        </p>
+        <p>
+          which manifests as a persistent marginal bias on the double-ring toy (see Motivation carousel).
+        </p>
+      </div>
+
+      <!-- 3.4 Precise -->
+      <h3 class="title is-4 method-subtitle">4. <span style="font-variant: small-caps;">Precise</span>: a frozen-posterior-mean closed-form transition</h3>
+
+      <div class="columns is-vcentered method-precise-row">
+        <div class="column is-two-thirds">
+          <div class="content has-text-justified">
+            <p>
+              The Euler failure is feedback blindness; the CPS failure is variance collapse.
+              We want a finite-step rule that <em>keeps</em> the reverse-SDE dynamics yet has a
+              stable per-step anchor. Our key observation:
+              <em>the clean-latent posterior mean $\hat{\mathbf{z}}_0(t)$ moves only mildly under
+              isotropic perturbations of $\mathbf{z}_t$</em>, because estimating it is exactly the
+              denoising task the network was pretrained on. We therefore freeze
+              $\hat{\mathbf{z}}_0(t)$ over a single reverse step &mdash; but, unlike CPS, we use it
+              only as a <em>linearization anchor</em>; the residual stochastic variance is still
+              set by the SDE transition. Rewriting the reverse SDE around this anchor gives
+            </p>
+            <p>
+              \[
+                \mathrm{d}\mathbf{z}_t
+                \;=\;
+                \Bigl(
+                  \frac{\mathbf{z}_t-\hat{\mathbf{z}}_0(t)}{t}
+                  +\frac{\varepsilon_t^{2}}{2t^{2}}\bigl(\mathbf{z}_t-(1-t)\hat{\mathbf{z}}_0(t)\bigr)
+                \Bigr)\mathrm{d}t
+                +\varepsilon_t\,\mathrm{d}\mathbf{w}_t.
+              \]
+            </p>
+          </div>
+        </div>
+        <div class="column">
+          <figure class="image method-side-figure">
+            <img src="static/images/precise_fig_ratio_logsnr.png"
+              alt="SD3.5-M clean-latent stability under forward-style renoising vs logSNR" loading="lazy" />
+            <figcaption>
+              <strong>Empirical check.</strong> On SD3.5-M, the RMS movement of
+              $\hat{\mathbf{z}}_0$ under forward-style renoising stays below the movement of the noisy
+              latent across the entire logSNR range &mdash; the frozen-mean approximation is locally valid.
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="content has-text-justified">
+        <div class="callout callout-assumption">
+          <span class="callout-label">Assumption (Frozen posterior mean on one step).</span>
+          For a reverse step $t\!\to\!t'<t$, we treat the clean-latent posterior mean along the step as
+          approximately constant: $\hat{\mathbf{z}}_0(s)\approx\hat{\mathbf{z}}_0(t)$ for all
+          $s\in[t',t]$.
+        </div>
+        <p>
+          Under this assumption the SDE becomes linear in $\mathbf{z}_t$ and can be solved in closed form.
+        </p>
+        <div class="callout callout-theorem">
+          <span class="callout-label">Theorem (Exact transition under frozen posterior mean).</span>
+          With $A(t',t)\triangleq\int_{t'}^{t}\varepsilon_s^{2}/s^{2}\,\mathrm{d}s$ and
+          $\mathbf{w}\sim\mathcal{N}(\mathbf{0},\mathbf{I})$ independent of $\mathbf{z}_t$,
+          \[
+            \mathbf{z}_{t'}
+            \;=\;
+            (1-t')\hat{\mathbf{z}}_0(t)
+            \;+\;\frac{t'}{t}\,e^{-A(t',t)/2}\bigl(\mathbf{z}_t-(1-t)\hat{\mathbf{z}}_0(t)\bigr)
+            \;+\; t'\sqrt{1-e^{-A(t',t)}}\,\mathbf{w}.
+          \]
+        </div>
+        <p>
+          Plugging in the logSNR-balanced schedule $\varepsilon_t=\eta\sqrt{t/(1-t)}$ gives
+          $A(t',t)=\eta^{2}\log\!\bigl(t(1-t')/(t'(1-t))\bigr)$, and the transition collapses into the
+          clean update rule actually used by <span style="font-variant: small-caps;">Precise</span>:
+        </p>
+        <p>
+          \[
+            \boxed{\;
+              \mathbf{z}_{t'}
+              \;=\;
+              (1-t')\,\hat{\mathbf{z}}_0(t)
+              \;+\; t'\,\rho(t',t)\,\hat{\boldsymbol{\epsilon}}(t)
+              \;+\; t'\sqrt{1-\rho(t',t)^{2}}\,\mathbf{w},
+              \qquad
+              \rho(t',t) \;=\; \Bigl(\dfrac{t'(1-t)}{t(1-t')}\Bigr)^{\eta^{2}/2}.
+            \;}
+          \]
+        </p>
+        <p>
+          The two terms after $\hat{\mathbf{z}}_0(t)$ have squared norms that sum to ${t'}^{2}$,
+          which exactly matches the flow-matching marginal at $t'$: <em>no excess discretization noise</em>.
+          And because $\hat{\mathbf{z}}_0(t)$ is used only as a step-local anchor, posterior covariance
+          is preserved&mdash;<em>no CPS-style marginal contraction</em>.
+        </p>
+      </div>
+
+      <!-- 3.5 Algorithm 1 -->
+      <h3 class="title is-4 method-subtitle">5. Algorithm</h3>
+      <div class="algo-box">
+        <div class="algo-title">Algorithm 1&nbsp;&nbsp;<span style="font-variant: small-caps;">Precise</span> one-step reverse update</div>
+        <div class="algo-body">
+          <div class="algo-line"><span class="algo-kw">Require:</span>&nbsp;current latent $\mathbf{z}_t$, current time $t$, next time $t' &lt; t$, exploration strength $\eta$</div>
+          <div class="algo-line"><span class="algo-kw">Require:</span>&nbsp;flow-matching velocity model $v_\theta(\cdot,\cdot)$</div>
+          <div class="algo-line"><span class="algo-num">1:</span>&nbsp;$\hat{\mathbf{u}}_t \leftarrow v_\theta(\mathbf{z}_t,\,t)$ <span class="algo-cmt">// model velocity</span></div>
+          <div class="algo-line"><span class="algo-num">2:</span>&nbsp;$\hat{\mathbf{z}}_0(t) \leftarrow \mathbf{z}_t - t\,\hat{\mathbf{u}}_t$ <span class="algo-cmt">// clean-latent prediction</span></div>
+          <div class="algo-line"><span class="algo-num">3:</span>&nbsp;$\hat{\boldsymbol{\epsilon}}(t) \leftarrow \mathbf{z}_t + (1-t)\,\hat{\mathbf{u}}_t$ <span class="algo-cmt">// noise prediction</span></div>
+          <div class="algo-line"><span class="algo-num">4:</span>&nbsp;$\rho \leftarrow \bigl(t'(1-t)\,/\,t(1-t')\bigr)^{\eta^{2}/2}$ <span class="algo-cmt">// closed-form coupling</span></div>
+          <div class="algo-line"><span class="algo-num">5:</span>&nbsp;sample $\mathbf{w}\sim\mathcal{N}(\mathbf{0},\mathbf{I})$</div>
+          <div class="algo-line"><span class="algo-num">6:</span>&nbsp;$\mathbf{z}_{t'} \leftarrow (1-t')\,\hat{\mathbf{z}}_0(t) + t'\rho\,\hat{\boldsymbol{\epsilon}}(t) + t'\sqrt{1-\rho^{2}}\,\mathbf{w}$</div>
+          <div class="algo-line"><span class="algo-num">7:</span>&nbsp;<span class="algo-kw">return</span>&nbsp;$\mathbf{z}_{t'}$</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="results" class="hero is-small">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">SD3.5-M main results</h2>
+        <p class="subtitle is-6 has-text-centered has-text-grey mb-5">Experiments — main table, training curves, and
+          head-to-head (replace placeholder table PNGs from your LaTeX build).</p>
+        <div id="carousel-sd35-main" class="carousel results-carousel">
+          <div class="item">
+            <img src="static/images/precise_table_main_sd35m.png" alt="Main SD3.5-M results table"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>Main SD3.5-M results.</strong>
+              Two protocols: <em>10-NFE / 3000-iter</em> and <em>30-NFE / 1000-iter</em> (~3 days each on
+              8&times; NVIDIA H20). Entries are mean&plusmn;std over three evaluation seeds; higher is better.
+              <strong>Bold</strong> = best, <u>underline</u> = runner-up. The gray row is DiffusionNFT, trained at
+              its default 25-NFE setting and evaluated at 30-NFE.
+              <span style="font-variant: small-caps;">Precise</span> ranks first on every training reward under both
+              protocols and is top-2 on the held-out metrics.
+            </p>
+          </div>
+          <div class="item">
+            <img src="static/images/precise_fig_main_curves.png" alt="Main training curves"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>Training trajectories</strong> for PickScore, CLIPScore, and HPSv2.1 under both protocols.
+              Using the best prior-sampler value on each reward as the target,
+              <span style="font-variant: small-caps;">Precise</span> reaches it with
+              <strong>14.2&ndash;22.1% fewer iterations at 10 NFE</strong> and
+              <strong>13.1&ndash;53.2% fewer at 30 NFE</strong>&mdash;direct wall-clock savings since sampler
+              overhead is negligible.
+            </p>
+          </div>
+          <div class="item">
+            <img src="static/images/precise_table_head_to_head.png" alt="GenEval and PickScore head-to-head"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>Task-level head-to-head (10-NFE protocol).</strong>
+              One rule-based reward (GenEval) and one model-based reward (PickScore).
+              <span style="font-variant: small-caps;">Precise</span> wins both:
+              <strong>GenEval 0.980</strong> vs. 0.972 (CPS) / 0.969 (Flow-GRPO), and
+              <strong>PickScore 24.668</strong> vs. 24.594 / 24.283.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="flux" class="section hero is-light">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">FLUX.2 Klein</h2>
+        <p class="subtitle is-6 has-text-centered has-text-grey mb-5">20 NFE / 1000 iterations</p>
+        <div id="carousel-flux" class="carousel results-carousel">
+          <div class="item">
+            <img src="static/images/precise_table_flux20.png" alt="FLUX.2 Klein results table"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>FLUX.2 Klein 4B Base, 20-NFE / 1000-iter</strong>, LoRA $r=16,\,\alpha=16$, ~1 day on
+              8&times; NVIDIA H20. Mean&plusmn;std over three eval seeds; higher is better.
+              <span style="font-variant: small-caps;">Precise</span> ranks <strong>first on 5 of 6 metrics</strong>
+              and stays within 0.001 of best on UnifiedReward v2&mdash;gains transfer cleanly from SD3.5-M to
+              the newer FLUX.2 backbone.
+            </p>
+          </div>
+          <div class="item">
+            <img src="static/images/precise_fig_flux_curves.png" alt="FLUX training curves"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>FLUX.2 Klein training curves</strong> under the 20-NFE protocol
+              (PickScore / CLIPScore / HPSv2.1). <span style="font-variant: small-caps;">Precise</span> rises
+              fastest and reaches the best prior-sampler value with <strong>18.4&ndash;46.3% fewer iterations</strong>
+              across the three training rewards.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ablations" class="hero is-small">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">Ablations and robustness</h2>
+        <p class="subtitle is-6 has-text-centered has-text-grey mb-5">Schedule + discretization; NFE and η sweeps</p>
+        <div id="carousel-ablation" class="carousel results-carousel">
+          <div class="item">
+            <img src="static/images/precise_table_ablation_schedule_discretization.png"
+              alt="Ablation schedule and discretization" style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>Decomposing <span style="font-variant: small-caps;">Precise</span>'s gains</strong>
+              (SD3.5-M, 10-NFE, 3000-iter). Starting from Dance-GRPO (constant $\varepsilon_t$ + Euler step),
+              swapping in our SDE-consistent frozen-posterior-mean step gives
+              <span style="color:#d62728;"><strong>+0.826 PickScore / +0.037 HPSv2.1 / +0.151 ImageReward</strong></span>;
+              further swapping the constant schedule for $\varepsilon_t=\eta\sqrt{t/(1-t)}$ adds another
+              <span style="color:#d62728;"><strong>+0.491 / +0.014 / +0.114</strong></span>.
+              Both design components contribute.
+            </p>
+          </div>
+          <div class="item">
+            <img src="static/images/precise_fig_nfe_eta_ablation.png" alt="NFE and eta ablation"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>Robustness sweeps on PickScore.</strong>
+              <em>Left:</em> NFE $\in\{6,10,20,30\}$ at 3000 iters &mdash;
+              <span style="font-variant: small-caps;">Precise</span> leads at every step count, with the largest
+              margin in the aggressive 6-NFE regime where Flow-GRPO degrades sharply from excess noise.
+              <em>Right:</em> exploration strength $\eta\in\{0.5,1.0,1.5,2.0,2.5\}$ for
+              <span style="font-variant: small-caps;">Precise</span> at 10 NFE&mdash;flat across
+              $\eta\in[1.0,2.0]$, with graceful degradation at the extremes.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="qualitative" class="section hero is-light">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">Qualitative comparisons</h2>
+        <p class="subtitle is-6 has-text-centered has-text-grey mb-5">Appendix-style contact sheets (PickScore
+          training)</p>
+        <div id="carousel-qualitative" class="carousel results-carousel">
+          <div class="item">
+            <img src="static/images/precise_fig_qual_10nfe.png" alt="Qualitative 10 NFE"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>10-NFE protocol contact sheet</strong> (PickScore training, SD3.5-M).
+              Compared with Flow-GRPO (excess discretization noise &rarr; blurred objects and broken attribute
+              binding) and CPS (collapsed variance &rarr; repetitive layouts),
+              <span style="font-variant: small-caps;">Precise</span> preserves global structure, fine-grained
+              details, and prompt-specified attributes.
+            </p>
+          </div>
+          <div class="item">
+            <img src="static/images/precise_fig_qual_30nfe.png" alt="Qualitative 30 NFE"
+              style="max-width: 100%; height: auto;" loading="lazy" />
+            <p class="subtitle has-text-centered" style="margin-top: 16px;">
+              <strong>30-NFE protocol contact sheet</strong> (PickScore training, SD3.5-M).
+              At higher step budget all three samplers improve, but
+              <span style="font-variant: small-caps;">Precise</span> still produces the most consistent identity,
+              scene layout, and color fidelity across prompts.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!--
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <div class="bibtex-header">
+        <h2 class="title" style="margin-bottom: 0;">BibTeX</h2>
+        <button type="button" class="bibtex-copy-btn" id="bibtex-copy-btn"
+          aria-label="Copy BibTeX citation">
+          <span class="icon" style="margin-right: 4px;"><i class="far fa-clipboard"></i></span>
+          <span class="bibtex-copy-label">Copy</span>
+        </button>
+      </div>
+      <p class="is-size-7 has-text-grey">Replace <code>TODO_REPLACE</code> fields after arXiv / venue registration.</p>
+      <pre><code id="bibtex-content">@misc{zou2026precise,
+  title={Precise: {SDE}-Consistent Stochastic Sampling for {RL} Post-Training of Flow-Matching Models},
+  author={Zou, Jade and Huang, Tao and Kong, Weijie and Li, Junzhe and Wu, Yue and Tian, Qi and Xiong, Jiangfeng and Zhang, Jianwei and Bo, Liefeng and Zhong, Zhao},
+  year={2026},
+  eprint={TODO_REPLACE},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV},
+  url={TODO_REPLACE},
+}</code></pre>
+    </div>
+  </section>
+  -->
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <p>
+              This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template"
+                target="_blank" rel="noopener noreferrer">Academic Project Page Template</a> which was adopted from
+              the <a href="https://nerfies.github.io" target="_blank" rel="noopener noreferrer">Nerfies</a> project page.
+              You are free to borrow the source code of this website; we ask that you link back to this page in the
+              footer. <br>
+              This website is licensed under a <a rel="license noopener noreferrer"
+                href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons
+                Attribution-ShareAlike 4.0 International License</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Local scripts at end of body: works with file:// and without CDN jQuery -->
+  <script src="static/js/bulma-carousel.min.js"></script>
+  <script src="static/js/bulma-slider.min.js"></script>
+  <script src="static/js/index.js"></script>
+  <script>
+    (function () {
+      var btn = document.getElementById('bibtex-copy-btn');
+      var code = document.getElementById('bibtex-content');
+      if (!btn || !code) return;
+      var label = btn.querySelector('.bibtex-copy-label');
+      btn.addEventListener('click', function () {
+        var text = code.innerText;
+        var done = function () {
+          btn.classList.add('copied');
+          if (label) label.textContent = 'Copied!';
+          setTimeout(function () {
+            btn.classList.remove('copied');
+            if (label) label.textContent = 'Copy';
+          }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(function () {
+            fallbackCopy(text); done();
+          });
+        } else {
+          fallbackCopy(text); done();
+        }
+      });
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { /* noop */ }
+        document.body.removeChild(ta);
+      }
+    })();
+  </script>
+</body>
+
+</html>
